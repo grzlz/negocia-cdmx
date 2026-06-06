@@ -7,6 +7,7 @@ export const load: PageServerLoad = ({ cookies }) => {
 	if (!usuario_id) redirect(303, '/registro');
 
 	const db = getDb();
+
 	const usuario = db
 		.prepare('SELECT * FROM usuarios WHERE id = ?')
 		.get(Number(usuario_id)) as Record<string, unknown> | undefined;

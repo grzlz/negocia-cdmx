@@ -19,6 +19,9 @@ export interface Negocio {
 	rfc: string;
 	giro: Giro | '';
 	ramo: string;
+	cp: string;
+	calle: string;
+	colonia: string;
 }
 
 export interface Registro {
@@ -69,7 +72,10 @@ export function nuevoRegistro(): Registro {
 			razonSocial: '',
 			rfc: '',
 			giro: '',
-			ramo: ''
+			ramo: '',
+			cp: '',
+			calle: '',
+			colonia: ''
 		}
 	};
 }
@@ -114,6 +120,9 @@ export function validarNegocio(n: Negocio): ValidationError[] {
 	}
 	if (!n.giro) errores.push(e('giro', 'Selecciona un giro.'));
 	if (!n.ramo) errores.push(e('ramo', 'Selecciona un ramo.'));
+	if (!/^\d{5}$/.test(n.cp.trim())) errores.push(e('cp', 'El código postal debe tener 5 dígitos.'));
+	if (!n.calle.trim()) errores.push(e('calle', 'La calle y número son obligatorios.'));
+	if (!n.colonia.trim()) errores.push(e('colonia', 'La colonia es obligatoria.'));
 	return errores;
 }
 

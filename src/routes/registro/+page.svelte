@@ -457,6 +457,48 @@
 							</p>
 						{/if}
 					</label>
+
+					<!-- Dirección del negocio -->
+					<div class="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+						<p class="mb-3 text-sm font-medium text-neutral-700">
+							Dirección del negocio
+						</p>
+						<div class="grid gap-3 sm:grid-cols-3">
+							<div>
+								<Field
+									label="Código Postal"
+									name="cp"
+									inputmode="numeric"
+									maxlength={5}
+									minlength={5}
+									placeholder="06600"
+									bind:value={registro.negocio.cp}
+									required
+									error={errorDe(errores, 'cp')}
+								/>
+							</div>
+							<div class="sm:col-span-2">
+								<Field
+									label="Calle y número"
+									name="calle"
+									placeholder="Av. Insurgentes Sur 123"
+									bind:value={registro.negocio.calle}
+									required
+									error={errorDe(errores, 'calle')}
+								/>
+							</div>
+							<div class="sm:col-span-3">
+								<Field
+									label="Colonia"
+									name="colonia"
+									placeholder="Roma Norte"
+									bind:value={registro.negocio.colonia}
+									required
+									error={errorDe(errores, 'colonia')}
+								/>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<div class="mt-8 flex justify-between">

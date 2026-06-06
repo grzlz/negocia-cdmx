@@ -56,8 +56,12 @@
 				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 		}).addTo(mapa);
 
-		if (tieneDir && cp && calle && colonia) {
-			await cargar(`${calle}, ${colonia}, ${cp}`);
+		if (tieneDir && cp) {
+			// CP es la señal más fiable para Nominatim; la concatenación libre
+			// "calle, colonia, cp" suele no geocodificarse. Si hay CP, lo usamos.
+			await cargarPorCp();
+		} else if (tieneDir && calle && colonia) {
+			await cargarPorDireccion(`${calle}, ${colonia}`);
 		}
 	});
 
@@ -70,7 +74,48 @@
 		marcadorCentro = null;
 	}
 
-	async function cargar(dir: string) {
+	async function cargarPorCp() {
+		cargando = true;
+		errorMapa = '';
+		seleccionado = null;
+		limpiarMarcadores();
+
+		try {
+			if (!cp) throw new Error('Falta el código postal');
+			const r = await buscarDenue({ cp, keyword, radio: 1000 });
+			negocios = r.negocios ?? [];
+
+			mapa.setView([r.lat, r.lng], 15);
+
+			const iconoCentro = L.divIcon({
+				html: `<div style="background:#a02142;border:3px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
+				className: '',
+				iconSize: [16, 16],
+				iconAnchor: [8, 8]
+			});
+			marcadorCentro = L.marker([r.lat, r.lng], { icon: iconoCentro })
+				.addTo(mapa)
+				.bindTooltip('Tu negocio', { permanent: false });
+
+			for (const n of negocios) {
+				const lat = parseFloat(n.Latitud);
+				const lng = parseFloat(n.Longitud);
+				if (isNaN(lat) || isNaN(lng)) continue;
+				const m = L.marker([lat, lng])
+					.addTo(mapa)
+					.on('click', () => {
+						seleccionado = n;
+					});
+				marcadores.push(m);
+			}
+		} catch (e) {
+			errorMapa = (e as Error).message;
+		} finally {
+			cargando = false;
+		}
+	}
+
+	async function cargarPorDireccion(dir: string) {
 		cargando = true;
 		errorMapa = '';
 		seleccionado = null;
@@ -138,7 +183,7 @@
 			calle = formCalle.trim();
 			colonia = formColonia.trim();
 			tieneDir = true;
-			await cargar(`${calle}, ${colonia}, ${cp}`);
+			await cargarPorCp();
 		} catch (e) {
 			errorForm = (e as Error).message;
 		} finally {

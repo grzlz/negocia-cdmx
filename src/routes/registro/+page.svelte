@@ -34,6 +34,33 @@
 		registro.negocio.giro ? RAMOS_POR_GIRO[registro.negocio.giro] : []
 	);
 
+	const scorePassword = $derived(
+		!password
+			? 0
+			: [
+					password.length >= 8,
+					password.length >= 12,
+					password.length >= 16,
+					/[A-Z]/.test(password),
+					/[0-9]/.test(password),
+					/[^A-Za-z0-9]/.test(password)
+				].filter(Boolean).length
+	);
+
+	const passwordInfo = $derived(
+		!password
+			? null
+			: scorePassword <= 1
+				? { label: 'Muy débil', color: 'bg-red-500', segs: 1, texto: 'text-red-600' }
+				: scorePassword === 2
+					? { label: 'Débil', color: 'bg-orange-400', segs: 2, texto: 'text-orange-600' }
+					: scorePassword === 3
+						? { label: 'Regular', color: 'bg-amber-400', segs: 3, texto: 'text-amber-600' }
+						: scorePassword === 4
+							? { label: 'Fuerte', color: 'bg-lime-500', segs: 4, texto: 'text-lime-700' }
+							: { label: 'Muy fuerte', color: 'bg-green-500', segs: 5, texto: 'text-green-700' }
+	);
+
 	function onRazonSocialChange(e: Event) {
 		const checked = (e.currentTarget as HTMLInputElement).checked;
 		registro.negocio.tieneRazonSocial = checked;
@@ -231,8 +258,24 @@
 							bind:value={password}
 							autocomplete="new-password"
 							required
+							togglePassword
 							error={errorDe(errores, 'password')}
 						/>
+						{#if passwordInfo}
+							<div class="mt-2" aria-live="polite">
+								<div class="flex gap-1">
+									{#each [1, 2, 3, 4, 5] as seg (seg)}
+										<div
+											class="h-1.5 flex-1 rounded-full transition-colors duration-300
+												{passwordInfo.segs >= seg ? passwordInfo.color : 'bg-neutral-200'}"
+										></div>
+									{/each}
+								</div>
+								<p class="mt-1 text-xs font-medium {passwordInfo.texto}">
+									{passwordInfo.label}
+								</p>
+							</div>
+						{/if}
 					</div>
 				</div>
 
@@ -415,6 +458,48 @@
 							</p>
 						{/if}
 					</label>
+
+					<!-- Dirección del negocio -->
+					<div class="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+						<p class="mb-3 text-sm font-medium text-neutral-700">
+							Dirección del negocio
+						</p>
+						<div class="grid gap-3 sm:grid-cols-3">
+							<div>
+								<Field
+									label="Código Postal"
+									name="cp"
+									inputmode="numeric"
+									maxlength={5}
+									minlength={5}
+									placeholder="06600"
+									bind:value={registro.negocio.cp}
+									required
+									error={errorDe(errores, 'cp')}
+								/>
+							</div>
+							<div class="sm:col-span-2">
+								<Field
+									label="Calle y número"
+									name="calle"
+									placeholder="Av. Insurgentes Sur 123"
+									bind:value={registro.negocio.calle}
+									required
+									error={errorDe(errores, 'calle')}
+								/>
+							</div>
+							<div class="sm:col-span-3">
+								<Field
+									label="Colonia"
+									name="colonia"
+									placeholder="Roma Norte"
+									bind:value={registro.negocio.colonia}
+									required
+									error={errorDe(errores, 'colonia')}
+								/>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<div class="mt-8 flex justify-between">

@@ -19,6 +19,9 @@ export const actions: Actions = {
 		const rfc = (data.get('rfc') as string) || null;
 		const giro = data.get('giro') as string;
 		const ramo = data.get('ramo') as string;
+		const cp = (data.get('cp') as string) || null;
+		const calle = (data.get('calle') as string) || null;
+		const colonia = (data.get('colonia') as string) || null;
 
 		if (
 			!nombre ||
@@ -48,8 +51,8 @@ export const actions: Actions = {
 			.run(nombre, apellido_pat, apellido_mat, telefono, correo, password);
 
 		db.prepare(
-			`INSERT INTO negocios (usuario_id, nombre, tiene_razon_social, razon_social, rfc, giro, ramo)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+			`INSERT INTO negocios (usuario_id, nombre, tiene_razon_social, razon_social, rfc, giro, ramo, cp, calle, colonia)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		).run(
 			usuario.lastInsertRowid,
 			nombre_negocio,
@@ -57,7 +60,10 @@ export const actions: Actions = {
 			razon_social,
 			rfc,
 			giro,
-			ramo
+			ramo,
+			cp,
+			calle,
+			colonia
 		);
 
 		cookies.set('usuario_id', String(usuario.lastInsertRowid), {

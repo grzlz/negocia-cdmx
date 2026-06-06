@@ -3,6 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { buscarDenue } from '$lib/denue';
 	import type { UnidadEconomica } from '$lib/denue';
+	import GuiaRegistro from '$lib/components/GuiaRegistro.svelte';
 
 	interface Props {
 		cp?: string | null;
@@ -13,7 +14,7 @@
 
 	let { cp = null, calle = null, colonia = null, keyword = 'comercio' }: Props = $props();
 
-	// Estado del formulario de dirección
+	// Estado del formulario de dirección inicial
 	let formCp = $state(cp ?? '');
 	let formCalle = $state(calle ?? '');
 	let formColonia = $state(colonia ?? '');
@@ -21,11 +22,19 @@
 	let errorForm = $state('');
 	let tieneDir = $state(!!(cp && calle && colonia));
 
+	// Buscador de dirección
+	let busqueda = $state('');
+	let buscando = $state(false);
+	let errorBusqueda = $state('');
+
 	// Estado del mapa y DENUE
 	let cargando = $state(false);
 	let errorMapa = $state('');
 	let negocios = $state<UnidadEconomica[]>([]);
 	let seleccionado = $state<UnidadEconomica | null>(null);
+
+	// Zona actual para la guía de registro
+	let zonaActual = $state('');
 
 	// Referencias de Leaflet (tipado relajado para evitar import estático)
 	let mapEl: HTMLDivElement;
@@ -57,7 +66,8 @@
 		}).addTo(mapa);
 
 		if (tieneDir && cp && calle && colonia) {
-			await cargar(`${calle}, ${colonia}, ${cp}`);
+			zonaActual = [colonia, `CP ${cp}`].filter(Boolean).join(', ');
+			await cargar({ direccion: `${calle}, ${colonia}, ${cp}` });
 		}
 	});
 
@@ -70,27 +80,36 @@
 		marcadorCentro = null;
 	}
 
-	async function cargar(dir: string) {
+	function colocarPinCentro(lat: number, lng: number) {
+		marcadorCentro?.remove();
+		const iconoCentro = L.divIcon({
+			html: `<div style="background:#a02142;border:3px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:grab"></div>`,
+			className: '',
+			iconSize: [16, 16],
+			iconAnchor: [8, 8]
+		});
+		marcadorCentro = L.marker([lat, lng], { icon: iconoCentro, draggable: true })
+			.addTo(mapa)
+			.bindTooltip('Tu negocio · arrastra para mover', { permanent: false });
+
+		marcadorCentro.on('dragend', async () => {
+			const pos = marcadorCentro.getLatLng();
+			await cargarPorCoords(pos.lat, pos.lng);
+		});
+	}
+
+	async function cargar(params: { cp: string } | { direccion: string }) {
 		cargando = true;
 		errorMapa = '';
 		seleccionado = null;
 		limpiarMarcadores();
 
 		try {
-			const r = await buscarDenue({ direccion: dir, keyword, radio: 1000 });
+			const r = await buscarDenue({ ...params, keyword, radio: 1000 });
 			negocios = r.negocios ?? [];
 
 			mapa.setView([r.lat, r.lng], 15);
-
-			const iconoCentro = L.divIcon({
-				html: `<div style="background:#a02142;border:3px solid white;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
-				className: '',
-				iconSize: [16, 16],
-				iconAnchor: [8, 8]
-			});
-			marcadorCentro = L.marker([r.lat, r.lng], { icon: iconoCentro })
-				.addTo(mapa)
-				.bindTooltip('Tu negocio', { permanent: false });
+			colocarPinCentro(r.lat, r.lng);
 
 			for (const n of negocios) {
 				const lat = parseFloat(n.Latitud);
@@ -107,6 +126,56 @@
 			errorMapa = (e as Error).message;
 		} finally {
 			cargando = false;
+		}
+	}
+
+	async function cargarPorCoords(lat: number, lng: number) {
+		cargando = true;
+		errorMapa = '';
+		seleccionado = null;
+		for (const m of marcadores) m.remove();
+		marcadores = [];
+
+		try {
+			const r = await buscarDenue({ lat, lng, keyword, radio: 1000 });
+			negocios = r.negocios ?? [];
+			mapa.setView([lat, lng], 15);
+
+			for (const n of negocios) {
+				const nlat = parseFloat(n.Latitud);
+				const nlng = parseFloat(n.Longitud);
+				if (isNaN(nlat) || isNaN(nlng)) continue;
+				const m = L.marker([nlat, nlng])
+					.addTo(mapa)
+					.on('click', () => {
+						seleccionado = n;
+					});
+				marcadores.push(m);
+			}
+		} catch (e) {
+			errorMapa = (e as Error).message;
+		} finally {
+			cargando = false;
+		}
+	}
+
+	async function buscarDireccion() {
+		const q = busqueda.trim();
+		if (!q) return;
+
+		buscando = true;
+		errorBusqueda = '';
+		seleccionado = null;
+
+		try {
+			const esCp = /^\d{5}$/.test(q);
+			zonaActual = q;
+			await cargar(esCp ? { cp: q } : { direccion: q });
+			tieneDir = true;
+		} catch (e) {
+			errorBusqueda = (e as Error).message;
+		} finally {
+			buscando = false;
 		}
 	}
 
@@ -138,7 +207,8 @@
 			calle = formCalle.trim();
 			colonia = formColonia.trim();
 			tieneDir = true;
-			await cargar(`${calle}, ${colonia}, ${cp}`);
+			zonaActual = [colonia, `CP ${cp}`].filter(Boolean).join(', ');
+			await cargar({ direccion: `${calle}, ${colonia}, ${cp}` });
 		} catch (e) {
 			errorForm = (e as Error).message;
 		} finally {
@@ -149,7 +219,7 @@
 
 <div class="flex flex-col gap-4">
 	{#if !tieneDir}
-		<!-- Formulario de dirección, mostrado encima del mapa -->
+		<!-- Formulario de dirección inicial -->
 		<div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
 			<p class="mb-3 text-sm font-medium text-amber-900">
 				Para mostrarte negocios aledaños necesitamos la dirección de tu empresa.
@@ -207,6 +277,36 @@
 		</div>
 	{/if}
 
+	<!-- Buscador de dirección (visible cuando ya hay dirección) -->
+	{#if tieneDir}
+		<div class="flex flex-col gap-1.5">
+			<div class="flex gap-2">
+				<input
+					bind:value={busqueda}
+					type="text"
+					placeholder="CP (ej. 06600), calle o colonia"
+					class="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-gob focus:ring-2 focus:ring-gob/30"
+					onkeydown={(e) => e.key === 'Enter' && buscarDireccion()}
+				/>
+				<button
+					onclick={buscarDireccion}
+					disabled={buscando || !busqueda.trim()}
+					class="rounded-lg bg-gob px-4 py-2 text-sm font-medium text-white transition hover:bg-gob-dark disabled:opacity-50"
+				>
+					{buscando ? 'Buscando…' : 'Buscar'}
+				</button>
+			</div>
+			<p class="text-xs text-neutral-400">
+				También puedes arrastrar el pin rojo para ajustar la ubicación exacta.
+			</p>
+			{#if errorBusqueda}
+				<p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+					{errorBusqueda}
+				</p>
+			{/if}
+		</div>
+	{/if}
+
 	{#if errorMapa}
 		<p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
 			{errorMapa}
@@ -230,7 +330,7 @@
 		</p>
 	{/if}
 
-	<!-- Panel de detalle al hacer clic en un marcador -->
+	<!-- Panel de detalle de negocio seleccionado -->
 	{#if seleccionado}
 		<div class="rounded-xl border border-neutral-200 bg-white p-4 text-sm shadow-sm">
 			<div class="flex items-start justify-between gap-2">
@@ -245,7 +345,7 @@
 						seleccionado = null;
 					}}
 					aria-label="Cerrar detalle"
-					class="text-lg leading-none text-neutral-400 hover:text-neutral-600"
+					class="shrink-0 text-lg leading-none text-neutral-400 hover:text-neutral-600"
 				>
 					×
 				</button>
@@ -258,11 +358,11 @@
 				</div>
 				<div>
 					<dt class="text-neutral-400">Latitud</dt>
-					<dd class="font-mono text-neutral-700">{seleccionado.Latitud}</dd>
+					<dd class="font-mono text-neutral-700">{seleccionado.Latitud || '—'}</dd>
 				</div>
 				<div>
 					<dt class="text-neutral-400">Longitud</dt>
-					<dd class="font-mono text-neutral-700">{seleccionado.Longitud}</dd>
+					<dd class="font-mono text-neutral-700">{seleccionado.Longitud || '—'}</dd>
 				</div>
 				<div>
 					<dt class="text-neutral-400">Teléfono</dt>
@@ -289,5 +389,10 @@
 				</div>
 			</dl>
 		</div>
+	{/if}
+
+	<!-- Guía de registro empresarial -->
+	{#if tieneDir && !cargando}
+		<GuiaRegistro giro={keyword} ramo={keyword} zona={zonaActual || 'Ciudad de México'} />
 	{/if}
 </div>

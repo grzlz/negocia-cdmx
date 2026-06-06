@@ -8,6 +8,7 @@
 	import { GIROS } from '$lib/registro';
 	import type { AnalisisResultado, EstablecimientoDenue } from '$lib/viabilidad/types';
 	import type { PageData } from './$types';
+	import { exportarAnalisisPDF } from '$lib/pdf';
 
 	let { data }: { data: PageData } = $props();
 
@@ -167,6 +168,34 @@
 	});
 
 	const competencia: EstablecimientoDenue[] = $derived(resultado?.competencia_considerada ?? []);
+
+	// ── Exportar PDF ──────────────────────────────────────────────────────────
+	let exportando = $state(false);
+
+	async function exportarPDF() {
+		if (!resultado || !esNegocioValido(data.negocio) || !data.usuario) return;
+		exportando = true;
+		try {
+			await exportarAnalisisPDF(
+				resultado,
+				{
+					nombre: data.negocio.nombre,
+					giro: giroLabel,
+					ramo: data.negocio.ramo,
+					cp: data.negocio.cp,
+					calle: data.negocio.calle,
+					colonia: data.negocio.colonia
+				},
+				{
+					nombre: String(data.usuario.nombre ?? ''),
+					apellido_pat: String(data.usuario.apellido_pat ?? ''),
+					apellido_mat: data.usuario.apellido_mat ? String(data.usuario.apellido_mat) : undefined
+				}
+			);
+		} finally {
+			exportando = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -340,6 +369,35 @@
 								timeStyle: 'short'
 							})}
 						</p>
+
+						<!-- Exportar PDF -->
+						<div class="flex justify-center pt-1">
+							<button
+								type="button"
+								onclick={exportarPDF}
+								disabled={exportando}
+								class="inline-flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition hover:border-gob hover:bg-gob-soft hover:text-gob-dark disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{#if exportando}
+									<span class="relative flex h-4 w-4">
+										<span class="absolute inline-flex h-full w-full animate-spin rounded-full border-2 border-gob/30 border-t-gob"></span>
+									</span>
+									Generando PDF…
+								{:else}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 20 20"
+										fill="currentColor"
+										class="h-4 w-4 text-gob"
+										aria-hidden="true"
+									>
+										<path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+										<path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+									</svg>
+									Descargar análisis en PDF
+								{/if}
+							</button>
+						</div>
 					</div>
 				{/if}
 			</section>

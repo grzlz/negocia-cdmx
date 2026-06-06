@@ -1,70 +1,58 @@
 # NegociaCDMX
 
-Herramienta para emprendedores e inversionistas que quieren **abrir un negocio en la Ciudad de México**. Resuelve la doble barrera del emprendedor: saber si su idea es **viable en la zona elegida** y conocer **qué trámites, permisos y ventanillas** necesita, y en qué orden.
+Abrir un negocio en la CDMX es difícil porque no existe una sola herramienta que diga si tu idea es viable en tu zona **y** qué trámites legales debes completar primero.
 
-> Reto 2 — Viabilidad de negocios CDMX.
+---
 
-## Funcionalidad actual
+## Para quién es
 
-- **Landing** con tres accesos: Registro, Iniciar sesión y Demo.
-- **Registro con formulario por pasos (pager):**
-  - **Dueño del negocio:** nombre, apellidos, teléfono y correo (con validación).
-  - **Negocio:** nombre, giro (industrial / comercial / servicios) y ramo.
-  - Campos dinámicos según figura moral:
-    - Con razón social → captura de **razón social** y **RFC** (validado).
-    - Sin figura moral → guía para constituir una **Sociedad por Acciones Simplificadas (SAS)**.
-- Identidad visual del Gobierno de la CDMX (color institucional `#a02142`).
+Emprendedores de la Ciudad de México que tienen una idea de negocio y necesitan dos respuestas concretas antes de invertir: si la zona aguanta otro establecimiento de su giro, y qué ventanillas deben pisar — en qué orden — para operar legalmente.
+
+---
+
+## Correrlo en 5 minutos
+
+```sh
+git clone https://github.com/grzlz/negocia-cdmx
+cd negocia-cdmx
+npm install
+
+cp .env.example .env
+# Edita .env y pon tu GEMINI_API_KEY (ver SETUP.md para obtenerla)
+
+# Crea el archivo de secretos del DENUE
+echo "INEGI_DENUE_TOKEN=tu_token_aqui" > .secret
+
+npm run dev
+```
+
+Abre `http://localhost:5173`, regístrate y el análisis arranca solo.
+
+> Sin `GEMINI_API_KEY` el análisis de viabilidad y la guía de registro fallan.  
+> Sin `INEGI_DENUE_TOKEN` el mapa de negocios aledaños falla. Ver [SETUP.md](./SETUP.md) para obtener ambos.
+
+---
 
 ## Stack
 
-- **SvelteKit** + **Svelte 5**
-- **TailwindCSS v4**
-- **TypeScript**
+| Capa | Tecnología |
+|---|---|
+| Framework | SvelteKit 2 + Svelte 5 (runes) |
+| Estilos | Tailwind CSS v4 |
+| Lenguaje | TypeScript |
+| Base de datos | SQLite vía `better-sqlite3` |
+| IA | Google Gemini 2.5 Flash (`@google/generative-ai`) |
+| Mapas | Leaflet + OpenStreetMap (gratuito, sin token) |
+| Datos de negocios | API DENUE – INEGI |
+| PDF | jsPDF (generación client-side) |
+| Runtime | Node.js · `@sveltejs/adapter-node` |
 
-## Desarrollo
+---
 
-```sh
-npm install
-npm run dev          # servidor de desarrollo
-npm run dev -- --open
-```
+## Limitaciones conocidas
 
-Otros scripts:
-
-```sh
-npm run check        # type-check con svelte-check
-npm run lint         # prettier + eslint
-npm run format       # prettier --write
-npm run build        # build de producción
-npm run preview      # previsualizar el build
-```
-
-## Estructura
-
-```
-src/
-├── lib/
-│   ├── registro.ts          # modelo de datos y validaciones del registro
-│   └── components/          # Brand, Field, SasInfo
-└── routes/
-    ├── +page.svelte         # landing
-    ├── registro/            # formulario por pasos
-    ├── iniciar-sesion/
-    └── demo/
-docs/
-├── req.md                   # planteamiento del reto
-└── ideas.md                 # notas de producto
-```
-
-## Próximas features
-
-Lo que falta para cubrir el reto completo:
-
-- [ ] **Análisis de viabilidad por zona** — afluencia y competencia del giro/ramo en la ubicación elegida.
-- [ ] **Mapa de trámites** — qué documentos y permisos se necesitan, en qué ventanilla y en qué orden (ruta crítica del emprendedor).
-- [ ] **Programas de emprendimiento CDMX** — apoyos y convocatorias disponibles según el perfil del negocio.
-- [ ] **Autenticación real** — registro/inicio de sesión persistente (hoy el flujo es solo de captura).
-- [ ] **Panel del emprendedor** — guardar el negocio, retomar trámites y dar seguimiento al avance.
-- [ ] **Estimación de costos y tiempos** por trámite.
-
-> ¿Ideas o prioridades? Ver `docs/ideas.md`.
+- **Sesión sin persistencia entre dispositivos.** La autenticación usa una cookie de sesión simple; cerrar el navegador o cambiar de dispositivo cierra la sesión.
+- **SQLite de archivo único.** Suficiente para desarrollo y demos; no escala a múltiples instancias en producción.
+- **DENUE con cobertura limitada.** El analizador de viabilidad usa un dataset mock local de la CDMX; el mapa en tiempo real depende del token INEGI y puede devolver pocos resultados en zonas periféricas.
+- **Guía de registro generada con IA.** Los pasos son orientativos y se basan en protocolos CDMX 2025; verifica siempre en las dependencias oficiales antes de actuar.
+- **Sin Mapbox, sin `MapaCompetencia`.** El componente `MapaCompetencia` requiere `PUBLIC_MAPBOX_TOKEN`. El mapa principal (`MapaDenue`) funciona sin él usando OpenStreetMap.

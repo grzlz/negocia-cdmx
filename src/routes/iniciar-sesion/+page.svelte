@@ -57,6 +57,7 @@
 					bind:value={password}
 					autocomplete="current-password"
 					required
+					togglePassword
 				/>
 				<button
 					type="submit"

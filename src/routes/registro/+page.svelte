@@ -258,6 +258,7 @@
 							bind:value={password}
 							autocomplete="new-password"
 							required
+							togglePassword
 							error={errorDe(errores, 'password')}
 						/>
 						{#if passwordInfo}

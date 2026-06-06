@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
-	import { GIROS } from '$lib/registro';
+	import MapaCompetencia from '$lib/components/MapaCompetencia.svelte';
+	import { GIROS, type Giro } from '$lib/registro';
+	import { obtenerCompetencia } from '$lib/competencia';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -26,6 +28,14 @@
 	}
 
 	const giroLabel = $derived(GIROS.find((g) => g.value === data.negocio?.giro)?.label ?? '—');
+
+	// Competencia mock derivada del giro/ramo del negocio. Al integrar datos reales,
+	// sustituir `obtenerCompetencia` por el fetch correspondiente (mismo tipo Competidor[]).
+	const competidores = $derived(
+		esNegocioValido(data.negocio)
+			? obtenerCompetencia({ giro: data.negocio.giro as Giro, ramo: data.negocio.ramo })
+			: []
+	);
 </script>
 
 <svelte:head>
@@ -99,12 +109,29 @@
 				</div>
 			</div>
 
+			<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+				<div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-6 py-4">
+					<div>
+						<h2 class="text-sm font-semibold tracking-wide text-neutral-500 uppercase">
+							Competencia cercana
+						</h2>
+						<p class="mt-1 text-sm text-neutral-600">
+							{competidores.length} negocios del giro <strong>{giroLabel}</strong> en tu zona.
+						</p>
+					</div>
+					<span class="hidden text-xs text-neutral-400 sm:block">Datos de muestra</span>
+				</div>
+				<div class="h-[420px] w-full">
+					<MapaCompetencia {competidores} />
+				</div>
+			</div>
+
 			<div
 				class="mt-6 rounded-xl border border-dashed border-neutral-300 bg-white p-6 text-center text-neutral-500"
 			>
 				<p class="font-medium text-neutral-700">Próximamente</p>
 				<p class="mt-1 text-sm">
-					Análisis de viabilidad por zona, afluencia, competencia, trámites y programas de la CDMX.
+					Análisis de viabilidad por zona, afluencia, trámites y programas de la CDMX.
 				</p>
 			</div>
 		{:else}

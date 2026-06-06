@@ -1,15 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
-	import MapaCompetencia from '$lib/components/MapaCompetencia.svelte';
+	import MapaDenue from '$lib/components/MapaDenue.svelte';
 	import { GIROS, type Giro } from '$lib/registro';
-	import { obtenerCompetencia } from '$lib/competencia';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	// Validación defensiva del load. Aunque la forma viene del server con tipos,
-	// un cambio de esquema o un partial en runtime podría dejar campos faltantes.
 	function esNegocioValido(v: unknown): v is {
 		nombre: string;
 		giro: string;
@@ -17,6 +14,9 @@
 		tiene_razon_social: number;
 		razon_social: string | null;
 		rfc: string | null;
+		cp: string | null;
+		calle: string | null;
+		colonia: string | null;
 	} {
 		if (!v || typeof v !== 'object') return false;
 		const n = v as Record<string, unknown>;
@@ -29,12 +29,11 @@
 
 	const giroLabel = $derived(GIROS.find((g) => g.value === data.negocio?.giro)?.label ?? '—');
 
-	// Competencia mock derivada del giro/ramo del negocio. Al integrar datos reales,
-	// sustituir `obtenerCompetencia` por el fetch correspondiente (mismo tipo Competidor[]).
-	const competidores = $derived(
+	// Palabra clave para DENUE: ramo específico o giro genérico como fallback.
+	const keyword = $derived(
 		esNegocioValido(data.negocio)
-			? obtenerCompetencia({ giro: data.negocio.giro as Giro, ramo: data.negocio.ramo })
-			: []
+			? (data.negocio.ramo?.toLowerCase() ?? data.negocio.giro ?? 'comercio')
+			: 'comercio'
 	);
 </script>
 
@@ -109,20 +108,27 @@
 				</div>
 			</div>
 
+			<!-- Sección de negocios aledaños con DENUE -->
 			<div class="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
 				<div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-6 py-4">
 					<div>
 						<h2 class="text-sm font-semibold tracking-wide text-neutral-500 uppercase">
-							Competencia cercana
+							Negocios aledaños
 						</h2>
 						<p class="mt-1 text-sm text-neutral-600">
-							{competidores.length} negocios del giro <strong>{giroLabel}</strong> en tu zona.
+							Competencia dentro de 1 km en el giro <strong>{giroLabel}</strong> — datos del DENUE
+							· INEGI.
 						</p>
 					</div>
-					<span class="hidden text-xs text-neutral-400 sm:block">Datos de muestra</span>
+					<span class="hidden text-xs text-neutral-400 sm:block">DENUE · INEGI</span>
 				</div>
-				<div class="h-[420px] w-full">
-					<MapaCompetencia {competidores} />
+				<div class="p-6">
+					<MapaDenue
+						cp={data.negocio.cp}
+						calle={data.negocio.calle}
+						colonia={data.negocio.colonia}
+						{keyword}
+					/>
 				</div>
 			</div>
 

@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS negocios (
   rfc                TEXT,
   giro               TEXT CHECK (giro IN ('industrial', 'comercial', 'servicios')),
   ramo               TEXT,
+  cp                 TEXT,
+  calle              TEXT,
+  colonia            TEXT,
   created_at         TEXT DEFAULT (datetime('now'))
 );
 

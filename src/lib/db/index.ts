@@ -12,5 +12,9 @@ export function getDb() {
 	mkdirSync(dirname(DB_PATH), { recursive: true });
 	_db = new Database(DB_PATH);
 	_db.exec(readFileSync(MIGRATION_PATH, 'utf-8'));
+	// Columnas de dirección agregadas después de la migración inicial.
+	for (const col of ['cp', 'calle', 'colonia']) {
+		try { _db.exec(`ALTER TABLE negocios ADD COLUMN ${col} TEXT`); } catch { /* ya existe */ }
+	}
 	return _db;
 }

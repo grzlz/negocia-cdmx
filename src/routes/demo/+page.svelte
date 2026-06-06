@@ -1,17 +1,33 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import Brand from '$lib/components/Brand.svelte';
-	import { GIROS, type Registro } from '$lib/registro';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import { GIROS, RAMOS, type Registro } from '$lib/registro';
+	import { registroStore } from '$lib/registro.svelte';
 
-	let registro = $state<Registro | null>(null);
+	// Validación defensiva del store. Aunque el tipo es `Registro | null`,
+	// si el archivo es importado por terceros o extendido en runtime, podría
+	// llegar con una forma distinta.
+	function esRegistroValido(v: unknown): v is Registro {
+		if (!v || typeof v !== 'object') return false;
+		const r = v as Partial<Registro>;
+		return (
+			!!r.dueno &&
+			!!r.negocio &&
+			typeof r.dueno.nombre === 'string' &&
+			typeof r.negocio.nombre === 'string'
+		);
+	}
 
-	onMount(() => {
-		const raw = sessionStorage.getItem('registro');
-		if (raw) registro = JSON.parse(raw) as Registro;
+	const registro = $derived.by(() => {
+		const v = registroStore.actual;
+		return esRegistroValido(v) ? v : null;
 	});
 
-	const giroLabel = $derived(GIROS.find((g) => g.value === registro?.negocio.giro)?.label ?? '—');
+	const giroLabel = $derived(
+		registro ? (GIROS.find((g) => g.value === registro.negocio.giro)?.label ?? '—') : '—'
+	);
+
+	const ramoValido = $derived(registro ? RAMOS.includes(registro.negocio.ramo) : false);
 </script>
 
 <svelte:head>
@@ -19,14 +35,11 @@
 </svelte:head>
 
 <div class="min-h-screen bg-neutral-50">
-	<header class="border-b border-neutral-200 bg-white">
-		<div class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-			<Brand />
-			<a href={resolve('/')} class="text-sm text-neutral-500 hover:text-gob">Inicio</a>
-		</div>
-	</header>
+	<SiteHeader maxWidth="3xl">
+		<a href={resolve('/')} class="text-sm text-neutral-500 hover:text-gob">Inicio</a>
+	</SiteHeader>
 
-	<main class="mx-auto max-w-3xl px-6 py-10">
+	<div class="mx-auto max-w-3xl px-6 py-10">
 		{#if registro}
 			<div
 				class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
@@ -44,7 +57,7 @@
 							<dd class="inline">
 								{registro.dueno.nombre}
 								{registro.dueno.apellidoPaterno}
-								{registro.dueno.apellidoMaterno}
+								{registro.dueno.apellidoMaterno ?? ''}
 							</dd>
 						</div>
 						<div>
@@ -72,7 +85,7 @@
 						</div>
 						<div>
 							<dt class="inline text-neutral-500">Ramo:</dt>
-							<dd class="inline">{registro.negocio.ramo || '—'}</dd>
+							<dd class="inline">{ramoValido ? registro.negocio.ramo : '—'}</dd>
 						</div>
 						<div>
 							<dt class="inline text-neutral-500">Figura moral:</dt>
@@ -96,7 +109,10 @@
 			</div>
 		{:else}
 			<div class="rounded-xl border border-neutral-200 bg-white p-10 text-center">
-				<p class="text-neutral-600">Aún no hay un registro en esta sesión.</p>
+				<p class="text-neutral-600">
+					Aún no hay un registro en esta sesión. Si completaste el formulario, tus datos no se
+					persisten en este dispositivo.
+				</p>
 				<a
 					href={resolve('/registro')}
 					class="mt-4 inline-block rounded-lg bg-gob px-6 py-2.5 font-semibold text-white transition hover:bg-gob-dark"
@@ -105,5 +121,5 @@
 				</a>
 			</div>
 		{/if}
-	</main>
+	</div>
 </div>

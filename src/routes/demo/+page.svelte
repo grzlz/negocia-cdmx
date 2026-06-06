@@ -127,12 +127,36 @@
 		void generarAnalisis();
 	}
 
+	// Radar de bienvenida al cargar la página
+	const MENSAJES_RADAR = [
+		'Registrando tu negocio…',
+		'Consultando el DENUE en tu zona…',
+		'Analizando competencia del mercado…',
+		'Preparando tu análisis de viabilidad…'
+	];
+	let mensajeRadarIdx = $state(0);
+	let mostrarRadar = $state(false);
+	let timerRadar: ReturnType<typeof setInterval> | null = null;
+
+	function iniciarRadar() {
+		mostrarRadar = true;
+		mensajeRadarIdx = 0;
+		timerRadar = setInterval(() => {
+			mensajeRadarIdx = (mensajeRadarIdx + 1) % MENSAJES_RADAR.length;
+		}, 1400);
+		setTimeout(() => {
+			if (timerRadar) clearInterval(timerRadar);
+			mostrarRadar = false;
+		}, 3000);
+	}
+
 	// Auto-arranca al cargar la página si hay registro válido.
 	let yaArranco = false;
 	onMount(() => {
 		if (yaArranco) return;
 		yaArranco = true;
 		if (data.usuario && esNegocioValido(data.negocio)) {
+			iniciarRadar();
 			void generarAnalisis();
 		}
 	});
@@ -335,3 +359,113 @@
 		{/if}
 	</div>
 </div>
+
+{#if mostrarRadar}
+	<div
+		class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-950/95 backdrop-blur-sm"
+		aria-live="polite"
+		aria-label="Analizando tu negocio"
+	>
+		<div class="radar-screen">
+			<div class="ring r1"></div>
+			<div class="ring r2"></div>
+			<div class="ring r3"></div>
+			<div class="crosshair ch-v"></div>
+			<div class="crosshair ch-h"></div>
+			<div class="sweep"></div>
+			<div class="center-dot"></div>
+			<div class="blip b1"></div>
+			<div class="blip b2"></div>
+			<div class="blip b3"></div>
+			<div class="blip b4"></div>
+			<div class="blip b5"></div>
+		</div>
+
+		<div class="mt-8 text-center">
+			<p class="text-lg font-semibold text-white">{MENSAJES_RADAR[mensajeRadarIdx]}</p>
+			{#if data.negocio?.nombre}
+				<p class="mt-1 text-sm" style="color:#a02142cc">{data.negocio.nombre}</p>
+			{/if}
+			<div class="mt-4 flex justify-center gap-1.5">
+				{#each MENSAJES_RADAR as _, i}
+					<div
+						class="h-1.5 w-1.5 rounded-full transition-colors duration-300"
+						style={i === mensajeRadarIdx ? 'background:#a02142' : 'background:#ffffff33'}
+					></div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<style>
+	.radar-screen {
+		position: relative;
+		width: 220px;
+		height: 220px;
+		border-radius: 50%;
+		background: radial-gradient(circle, #0d1f12 0%, #050d08 100%);
+		box-shadow:
+			0 0 0 2px #a0214244,
+			0 0 40px #a0214222,
+			inset 0 0 30px #00000088;
+		overflow: hidden;
+	}
+	.ring {
+		position: absolute;
+		border-radius: 50%;
+		border: 1px solid #a0214233;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	.r1 { width: 100%; height: 100%; }
+	.r2 { width: 66%; height: 66%; }
+	.r3 { width: 33%; height: 33%; }
+	.crosshair {
+		position: absolute;
+		background: #a0214222;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	.ch-v { width: 1px; height: 100%; }
+	.ch-h { width: 100%; height: 1px; }
+	.sweep {
+		position: absolute;
+		inset: 0;
+		border-radius: 50%;
+		background: conic-gradient(from 0deg, transparent 75%, #a0214288 100%);
+		animation: radar-spin 2.5s linear infinite;
+	}
+	.center-dot {
+		position: absolute;
+		top: 50%; left: 50%;
+		width: 8px; height: 8px;
+		border-radius: 50%;
+		background: #a02142;
+		transform: translate(-50%, -50%);
+		box-shadow: 0 0 6px #a02142;
+		z-index: 2;
+	}
+	.blip {
+		position: absolute;
+		width: 6px; height: 6px;
+		border-radius: 50%;
+		background: #a02142;
+		box-shadow: 0 0 8px #a02142cc;
+	}
+	.b1 { top: 28%; left: 62%; animation: blip-pulse 2.5s 0.3s ease-in-out infinite; }
+	.b2 { top: 55%; left: 75%; animation: blip-pulse 2.5s 0.9s ease-in-out infinite; }
+	.b3 { top: 70%; left: 40%; animation: blip-pulse 2.5s 1.5s ease-in-out infinite; }
+	.b4 { top: 35%; left: 30%; animation: blip-pulse 2.5s 2.0s ease-in-out infinite; }
+	.b5 { top: 60%; left: 58%; animation: blip-pulse 2.5s 0.6s ease-in-out infinite; }
+	@keyframes radar-spin {
+		from { transform: rotate(0deg); }
+		to   { transform: rotate(360deg); }
+	}
+	@keyframes blip-pulse {
+		0%, 100% { opacity: 0; transform: scale(0.4); }
+		50%       { opacity: 1; transform: scale(1); }
+	}
+</style>
